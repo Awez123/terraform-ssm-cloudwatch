@@ -4,8 +4,8 @@ provider "aws" {
 
 module "iam" {
   source                = "./modules/iam"
-  role_name             = "ec2-ssm-role"
-  instance_profile_name = "ec2-ssm-instance-profile"
+  role_name             = "ec2-ssm-role_awez"
+  instance_profile_name = "ec2-ssm-instance-profile_awez"
 }
 
 module "ec2" {
@@ -15,14 +15,14 @@ module "ec2" {
   key_name               = "DevOpskeypair"
   iam_instance_profile   = module.iam.ec2_instance_profile
   vpc_id                 = "vpc-096b181209a1ed59a"
-  security_group_name    = "ec2-ssh-sg"
+  security_group_name    = "ec2-ssh-sg_awez"
   ssh_cidr_blocks        = ["0.0.0.0/0"]
-  tags                   = { Name = "AL2023-TerraformInstance", monitor = "cloudwatch" }
+  tags                   = { Name = "cloudwatch-module-test", monitor = "cloudwatch" }
 }
 
 module "ssm" {
   source           = "./modules/ssm"
-  document_name    = "InstallCloudWatchAgent-AL2023"
+  document_name    = "InstallCloudWatchAgent-AL2023-awez"
   document_content = jsonencode({
     schemaVersion = "2.2",
     description   = "Install, configure, and start CloudWatch Agent on AL2023",
@@ -43,54 +43,37 @@ module "ssm" {
             "    \"logs_collected\": {",
             "      \"files\": {",
             "        \"collect_list\": [",
-            "          { \"file_path\": \"/var/log/messages\", \"log_group_name\": \"allLogs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
-            "          { \"file_path\": \"/var/log/syslog\", \"log_group_name\": \"allLogs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
-            "          { \"file_path\": \"/var/log/*.log\", \"log_group_name\": \"allLogs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
-            "          { \"file_path\": \"/var/log/amazon/amazon-cloudwatch-agent/amazon-cloudwatch-agent.log\", \"log_group_name\": \"cloudwatchagent\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 }",
+            "          { \"file_path\": \"/var/log/messages\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/syslog\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/*.log\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/amazon/amazon-cloudwatch-agent/amazon-cloudwatch-agent.log\", \"log_group_name\": \"cloudwatch-agent-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 }",
             "        ]",
             "      }",
             "    }",
             "  },",
             "  \"metrics\": {",
-            "    \"namespace\": \"MyCustomNamespace\"{",
-            "    \"aggregation_dimensions\" : [[\"AutoScalingGroupName\"], [\"InstanceId\", \"InstanceType\"],[]],",
+            "    \"namespace\": \"CustomNamespace\",",
+            "    \"append_dimensions\": {",
+            "      \"InstanceId\": \"$${aws:InstanceId}\",",
+            "      \"InstanceType\": \"$${aws:InstanceType}\"",
+            "    },",
             "    \"metrics_collected\": {",
-            "      \"collectd\": {},",
             "      \"cpu\": {",
-            "        \"resources\": [\"*\"],",
-            "        \"measurement\": [",
-            "          {\"name\": \"cpu_usage_idle\", \"rename\": \"CPU_USAGE_IDLE\", \"unit\": \"Percent\"},",
-            "          {\"name\": \"cpu_usage_nice\", \"unit\": \"Percent\"},",
-            "          \"cpu_usage_guest\"",
-            "        ],",
-            "        \"totalcpu\": false,",
-            "        \"drop_original_metrics\": [\"cpu_usage_guest\"],",
-            "        \"metrics_collection_interval\": 10,",
-            "        \"append_dimensions\": {",
-            "          \"test\": \"test1\",",
-            "          \"date\": \"2017-10-01\"",
-            "        }",
-            "      },",
-            "      \"netstat\": {",
-            "        \"measurement\": [\"tcp_established\", \"tcp_syn_sent\", \"tcp_close\"],",
+            "        \"measurement\": [\"cpu_usage_idle\", \"cpu_usage_user\"],",
             "        \"metrics_collection_interval\": 60",
             "      },",
             "      \"disk\": {",
             "        \"measurement\": [\"used_percent\"],",
             "        \"resources\": [\"*\"],",
-            "        \"drop_device\": true",
+            "        \"metrics_collection_interval\": 60",
             "      },",
-            "      \"processes\": {",
-            "        \"measurement\": [\"running\", \"sleeping\", \"dead\"]",
+            "      \"mem\": {",
+            "        \"measurement\": [\"mem_used_percent\"],",
+            "        \"metrics_collection_interval\": 60",
             "      }",
-            "    },",
-            "    \"append_dimensions\": {",
-            "      \"ImageId\": \"$${aws:ImageId}\",",
-            "      \"InstanceId\": \"$${aws:InstanceId}\",",
-            "      \"InstanceType\": \"$${aws:InstanceType}\",",
-            "      \"AutoScalingGroupName\": \"$${aws:AutoScalingGroupName}\"",
             "    }",
-            "} ",
+            "  }",
+            "}",
             "EOF",
             "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s",
             "systemctl enable amazon-cloudwatch-agent",

@@ -1,0 +1,32 @@
+[
+      {
+        action = "aws:runShellScript",
+        name   = "installAndStartCloudWatchAgent",
+        inputs = {
+          runCommand = [
+            "dnf update -y",
+            "dnf install -y amazon-cloudwatch-agent",
+            "mkdir -p /usr/share/collectd/",
+            "touch /usr/share/collectd/types.db",
+            "cat <<EOF > /opt/aws/amazon-cloudwatch-agent/bin/config.json",
+            "{",
+            "  \"agent\": { \"metrics_collection_interval\": 60, \"root\": \"cwagent\" },",
+            "  \"logs\": {",
+            "    \"logs_collected\": {",
+            "      \"files\": {",
+            "        \"collect_list\": [",
+            "          { \"file_path\": \"/var/log/messages\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/syslog\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/*.log\", \"log_group_name\": \"cloudwatch-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 },",
+            "          { \"file_path\": \"/var/log/amazon/amazon-cloudwatch-agent/amazon-cloudwatch-agent.log\", \"log_group_name\": \"cloudwatch-agent-logs\", \"log_stream_name\": \"{instance_id}\", \"retention_in_days\": 30 }",
+            "        ]",
+            "      }",
+            "    }",
+            "  }",
+            "}",
+            "EOF",
+            "/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl -a fetch-config -m ec2 -c file:/opt/aws/amazon-cloudwatch-agent/bin/config.json -s",
+            "systemctl enable amazon-cloudwatch-agent",
+            "systemctl restart amazon-cloudwatch-agent",
+            "systemctl status amazon-cloudwatch-agent | tee /var/log/cloudwatch-agent-status.log"
+          ]
